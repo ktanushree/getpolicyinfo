@@ -5,7 +5,7 @@ This utility is used to download details about Prisma SDWAN policies and the rul
 This script can be used to understand all the policies (Security, Path, QoS & NAT) and the corresponding rule definition. 
 It downloads the policy details in a CSV.
 
-###Note: Version 1 only supports retrieval of Security Policies.
+### Note: Version 1 only supports retrieval of Security Policies.
 
 #### Requirements
 * Active Prisma SDWAN Account
