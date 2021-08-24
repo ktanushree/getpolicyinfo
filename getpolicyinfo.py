@@ -171,152 +171,12 @@ def create_dicts(cgx_session):
                     else:
                         swiname = "{} Circuit to {}".format(labelid_labelname[swi["label_id"]],nwid_nwname[swi["network_id"]])
                         swiid_swiname[swi["id"]] = swiname
+            else:
+                print("ERR: Could not retrieve Site WAN Interfaces for {}".format(site["name"]))
+                cloudgenix.jd_detailed(resp)
     else:
         print("ERR: Could not retrieve sites")
         cloudgenix.jd_detailed(resp)
-
-    #
-    # Security Pol Sets
-    #
-    print("\tSecurity Policy Sets & Rules")
-
-    resp = cgx_session.get.securitypolicysets()
-    if resp.cgx_status:
-        itemlist = resp.cgx_content.get("items", None)
-        for item in itemlist:
-            secpolname_secpolid[item["name"]] = item["id"]
-            secpolid_secpolname[item["id"]] = item["name"]
-
-            resp = cgx_session.get.securitypolicyrules(securitypolicyset_id=item["id"])
-            if resp.cgx_status:
-                ruleslist = resp.cgx_content.get("items", None)
-                secpolid_secruleslist[item["id"]] = ruleslist
-            else:
-                print("ERR: Could not retrieve Rules for Security Policy Set {}".format(item["name"]))
-                cloudgenix.jd_detailed(resp)
-
-    else:
-        print("ERR: Could not retrieve Security Policy Sets")
-        cloudgenix.jd_detailed(resp)
-
-    #
-    # Global Prefix Filter
-    #
-    print("\tGlobal Prefix Filters")
-
-    resp = cgx_session.get.globalprefixfilters()
-    if resp.cgx_status:
-        itemlist = resp.cgx_content.get("items", None)
-        for item in itemlist:
-            globalpfid_globalpfname[item["id"]] = item["name"]
-            filters = item.get("filter", None)
-            if filters is not None:
-                ip_prefixes = filters.get("ip_prefixes", None)
-                ip_prefixes_text = ""
-                for x in ip_prefixes:
-                    ip_prefixes_text = "{}; ".format(x)
-
-                globalpfid_globalprefixlist[item["id"]] = ip_prefixes_text
-            else:
-                globalpfid_globalprefixlist[item["id"]] = "-"
-    else:
-        print("ERR: Could not retrieve Global Prefix Filters")
-        cloudgenix.jd_detailed(resp)
-
-    #
-    # Local Prefix Filter
-    #
-    print("\tLocal Prefix Filters")
-
-    resp = cgx_session.get.localprefixfilters()
-    if resp.cgx_status:
-        itemlist = resp.cgx_content.get("items", None)
-        for item in itemlist:
-            localpfid_localpfname[item["id"]] = item["name"]
-
-            data = {
-                "query_params": {
-                    "prefix_filter_id": {
-                        "eq": item["id"]
-                    }
-                },
-                "getDeleted": False
-            }
-            prefix_text = ""
-            prefix_text_site = ""
-            resp = cgx_session.post.tenant_prefixfilters_query(data=data)
-            if resp.cgx_status:
-                prefixfilters = resp.cgx_content.get("items", None)
-                for pf in prefixfilters:
-                    sid = pf.get("site_id", None)
-                    sname = siteid_sitename[sid]
-                    filters = pf.get("filters", None)
-                    for filter in filters:
-                        ip_prefixes = filter.get("ip_prefixes", None)
-
-                        prefix_text += "{}; ".format(ip_prefixes)
-                        prefix_text_site += "{}; ({})".format(ip_prefixes,sname)
-
-                    localpfidsid_localpfbind[(item["id"],sid)] = prefix_text
-
-            else:
-                print("ERR: Could not retrieve Prefix Filters Bindings")
-                cloudgenix.jd_detailed(resp)
-
-            localpfid_localpfbind[item["id"]] = prefix_text_site
-    else:
-        print("ERR: Could not retrieve Local Prefix Filters")
-        cloudgenix.jd_detailed(resp)
-
-
-    #
-    # Zones
-    #
-    print("\tSecurity Zones")
-    resp = cgx_session.get.securityzones()
-    if resp.cgx_status:
-        itemlist = resp.cgx_content.get("items", None)
-        for item in itemlist:
-            zoneid_zonename[item["id"]] = item["name"]
-    else:
-        print("ERR: Could not retrieve Security Zones")
-        cloudgenix.jd_detailed(resp)
-
-    #
-    # Site Security Zones
-    #
-    print("\tSite Security Zones")
-    for sid in siteid_sitename.keys():
-        sname = siteid_sitename[sid]
-        resp = cgx_session.get.sitesecurityzones(site_id=sid)
-        if resp.cgx_status:
-            itemlist = resp.cgx_content.get("items", None)
-            for item in itemlist:
-                zid = item.get("zone_id", None)
-                networks = item.get("networks", None)
-                nw_text = ""
-                for nw in networks:
-                    swiid = nw["network_id"]
-                    if swiid in swiid_swiname.keys():
-                        swiname = swiid_swiname[swiid]
-                    else:
-                        swiname = swiid
-
-                    nw_text += "{}; ".format(swiname)
-
-                zidsid_sitebind[(zid,sid)] = nw_text
-                if zid in zid_sitebind.keys():
-                    sitebind = zid_sitebind[zid]
-                    sitebind.append({sid: nw_text})
-                    zid_sitebind[zid] = sitebind
-                else:
-                    sitebind = [{sid: nw_text}]
-                    zid_sitebind[zid] = sitebind
-
-        else:
-            print("ERR: Could not retrieve Site Security Zones for {}".format(sname))
-            cloudgenix.jd_detailed(resp)
-
 
     print("\tElements")
     resp = cgx_session.get.elements()
@@ -367,6 +227,171 @@ def create_dicts(cgx_session):
     else:
         print("ERR: Could not retrieve LAN Networks")
         cloudgenix.jd_detailed(resp)
+
+    #
+    # Security Pol Sets
+    #
+    print("\tSecurity Policy Sets & Rules")
+
+    resp = cgx_session.get.securitypolicysets()
+    if resp.cgx_status:
+        itemlist = resp.cgx_content.get("items", None)
+        for item in itemlist:
+            secpolname_secpolid[item["name"]] = item["id"]
+            secpolid_secpolname[item["id"]] = item["name"]
+
+            resp = cgx_session.get.securitypolicyrules(securitypolicyset_id=item["id"])
+            if resp.cgx_status:
+                ruleslist = resp.cgx_content.get("items", None)
+                secpolid_secruleslist[item["id"]] = ruleslist
+            else:
+                print("ERR: Could not retrieve Rules for Security Policy Set {}".format(item["name"]))
+                cloudgenix.jd_detailed(resp)
+
+    else:
+        print("ERR: Could not retrieve Security Policy Sets")
+        cloudgenix.jd_detailed(resp)
+
+    #
+    # Global Prefix Filter
+    #
+    print("\tGlobal Prefix Filters")
+
+    resp = cgx_session.get.globalprefixfilters()
+    if resp.cgx_status:
+        itemlist = resp.cgx_content.get("items", None)
+        for item in itemlist:
+            globalpfid_globalpfname[item["id"]] = item["name"]
+            filters = item.get("filter", None)
+            if filters is not None:
+                ip_prefixes = filters.get("ip_prefixes", None)
+                ip_prefixes_text = ""
+                for x in ip_prefixes:
+                    ip_prefixes_text = "{}; ".format(x)
+
+                globalpfid_globalprefixlist[item["id"]] = ip_prefixes_text[:-2]
+            else:
+                globalpfid_globalprefixlist[item["id"]] = "-"
+    else:
+        print("ERR: Could not retrieve Global Prefix Filters")
+        cloudgenix.jd_detailed(resp)
+
+    #
+    # Local Prefix Filter
+    #
+    print("\tLocal Prefix Filters")
+
+    resp = cgx_session.get.localprefixfilters()
+    if resp.cgx_status:
+        itemlist = resp.cgx_content.get("items", None)
+        for item in itemlist:
+            localpfid_localpfname[item["id"]] = item["name"]
+
+            data = {
+                "query_params": {
+                    "prefix_filter_id": {
+                        "eq": item["id"]
+                    }
+                },
+                "getDeleted": False
+            }
+            prefix_text = ""
+            prefix_text_site = ""
+            resp = cgx_session.post.tenant_prefixfilters_query(data=data)
+            if resp.cgx_status:
+                prefixfilters = resp.cgx_content.get("items", None)
+                for pf in prefixfilters:
+                    sid = pf.get("site_id", None)
+                    sname = siteid_sitename[sid]
+                    filters = pf.get("filters", None)
+                    for filter in filters:
+                        ip_prefixes = filter.get("ip_prefixes", None)
+
+                        prefix_text += "{}; ".format(ip_prefixes)
+                        prefix_text_site += "{}; ({})".format(ip_prefixes,sname)
+
+                    localpfidsid_localpfbind[(item["id"],sid)] = prefix_text[:-2]
+
+            else:
+                print("ERR: Could not retrieve Prefix Filters Bindings")
+                cloudgenix.jd_detailed(resp)
+
+            localpfid_localpfbind[item["id"]] = prefix_text_site[:-2]
+    else:
+        print("ERR: Could not retrieve Local Prefix Filters")
+        cloudgenix.jd_detailed(resp)
+
+
+    #
+    # Zones
+    #
+    print("\tSecurity Zones")
+    resp = cgx_session.get.securityzones()
+    if resp.cgx_status:
+        itemlist = resp.cgx_content.get("items", None)
+        for item in itemlist:
+            zoneid_zonename[item["id"]] = item["name"]
+    else:
+        print("ERR: Could not retrieve Security Zones")
+        cloudgenix.jd_detailed(resp)
+
+    #
+    # Site Security Zones
+    #
+    print("\tSite Security Zones")
+    for sid in siteid_sitename.keys():
+        sname = siteid_sitename[sid]
+        resp = cgx_session.get.sitesecurityzones(site_id=sid)
+        if resp.cgx_status:
+            itemlist = resp.cgx_content.get("items", None)
+            for item in itemlist:
+                zid = item.get("zone_id", None)
+                networks = item.get("networks", None)
+                nw_text = ""
+                for nw in networks:
+                    nwid = nw["network_id"]
+
+                    if nw["network_type"] == "wan_network":
+                        if nwid in swiid_swiname.keys():
+                            nwname = swiid_swiname[nwid]
+                        else:
+                            print("WARN: Could not map nwid {} in Site Binding for {}".format(nw, sname))
+                            nwname = nwid
+
+                    elif nw["network_type"] == "wan_overlay":
+                        if nwid in wanoverlayid_wanoverlayname.keys():
+                            nwname = wanoverlayid_wanoverlayname[nwid]
+                        else:
+                            print("WARN: Could not map nwid {} in Site Binding for {}".format(nw, sname))
+                            nwname = nwid
+
+                    elif nw["network_type"] == "lan_network":
+                            if nwid in lannwid_ipconfig.keys():
+                                nwname = lannwid_ipconfig[nwid]
+                            else:
+                                print("WARN: Could not map nwid {} in Site Binding for {}".format(nw, sname))
+                                nwname = nwid
+                    else:
+                        print("WARN: Could not map nwid {} in Site Binding for {}".format(nw,sname))
+                        nwname = nwid
+
+                    nw_text += "{}; ".format(nwname)
+
+                zidsid_sitebind[(zid,sid)] = nw_text[:-2]
+                if zid in zid_sitebind.keys():
+                    sitebind = zid_sitebind[zid]
+                    sitebind.append({sid: nw_text})
+                    zid_sitebind[zid] = sitebind
+                else:
+                    sitebind = [{sid: nw_text}]
+                    zid_sitebind[zid] = sitebind
+
+        else:
+            print("ERR: Could not retrieve Site Security Zones for {}".format(sname))
+            cloudgenix.jd_detailed(resp)
+
+
+
 
     print("\tElement Security Zones")
     for eid in elemid_siteid.keys():
@@ -695,16 +720,17 @@ def go():
             sid = elemid_siteid[eid]
             ename = elemid_elemname[eid]
             sname = siteid_sitename[sid]
+            sitebind = "-"
+            elembind = "-"
 
             if (zid,sid) in zidsid_sitebind.keys():
                 sitebind = zidsid_sitebind[(zid,sid)]
-            else:
-                sitebind = "-"
 
             if (zid,sid,eid) in zidsideid_elembind.keys():
                 elembind = zidsideid_elembind[(zid,sid,eid)]
-            else:
-                elembind="-"
+
+            if (sitebind == "-") and (elembind == "-"):
+                continue
 
             zonedata = zonedata.append({"zone_id": zid,
                                         "zone_name": zname,
